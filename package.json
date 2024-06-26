@@ -1,0 +1,30 @@
+{
+  "name": "woocomerce-middleware",
+  "version": "1.0.0",
+  "description": "script process order complecation from woocomerce to reservation api",
+  "main": "index.js",
+  "scripts": {
+    "dev": "tsc && node build/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Nina-Code-MX/woocomerce-middleware.git"
+  },
+  "author": "NinaCode.mx",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Nina-Code-MX/woocomerce-middleware/issues"
+  },
+  "homepage": "https://github.com/Nina-Code-MX/woocomerce-middleware#readme",
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "smee-client": "^2.0.1"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.14.9",
+    "typescript": "^5.5.2"
+  }
+}
