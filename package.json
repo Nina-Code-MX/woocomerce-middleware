@@ -4,7 +4,8 @@
   "description": "script process order complecation from woocomerce to reservation api",
   "main": "index.js",
   "scripts": {
-    "dev": "tsc && node build/index.js",
+    "dev": "npx tsc && node build/index.js",
+    "prod": "npx tsc && forever start --minUptime 1000 --spinSleepTime 1000 ./build/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
