@@ -7,7 +7,7 @@ const app = express();
 const PORT = 9950;
 const smee = new SmeeClient({
     source: "https://smee.io/ninacodemx",
-    target:  `Http://localhost:${PORT}`,
+    target:  `http://localhost:${PORT}`,
 
 });
 
