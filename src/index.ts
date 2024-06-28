@@ -7,15 +7,13 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.APP_PORT || 3000;
+const SMEE_URL = process.env.SMEE_URL || "http://smee.io/woocommerce-middleware";
+const smee = new SmeeClient({
+    source: SMEE_URL,
+    target: `http://localhost:${PORT}`,
+});
 
-if (process.env.APP_ENV != "production") {
-    const smee = new SmeeClient({
-        source: "https://smee.io/ninacodemx",
-        target: `http://localhost:${PORT}`,
-    });
-
-    smee.start();
-}
+smee.start();
 
 app.use(express.json());
 app.use('/', webhookRoutes);
