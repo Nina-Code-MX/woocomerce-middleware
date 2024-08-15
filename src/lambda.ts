@@ -73,7 +73,7 @@ exports.handler = async (event: APIGatewayProxyEvent, context: Context): Promise
                             });
                         } catch (error) {
                             if (error instanceof RangeError) {
-                                console.error(`Invalid date for activity_date <${activity_time}>.`);
+                                console.error(`Invalid time for activity_time <${activity_time}>.`);
                             } else {
                                 console.error(`An error ocurred: `, error);
                             }
@@ -84,8 +84,6 @@ exports.handler = async (event: APIGatewayProxyEvent, context: Context): Promise
         });
 
         console.log('Data to sent: ', JSON.stringify(order));
-
-        throw new Error(`Cancelled order.`);
 
         try {
             const response = await fetch("https://apps.canopyriver.com/api/ReservasWEB", {
