@@ -29,6 +29,8 @@ exports.handler = async (event: APIGatewayProxyEvent, context: Context): Promise
         body: JSON.stringify({ message: 'Skipped.' })
     };
 
+    console.log('Data received: ', JSON.stringify(order));
+
     if (
         (order.hasOwnProperty("status") && order.status == 'cancelled') ||
         (order.hasOwnProperty("date_paid") && order.date_paid)
@@ -36,28 +38,40 @@ exports.handler = async (event: APIGatewayProxyEvent, context: Context): Promise
         order.line_items.forEach((line_item: any, index: number) => {
             if (line_item.hasOwnProperty("meta_data")) {
                 line_item.meta_data.forEach((meta: any, index2: number) => {
-                    if (meta.display_key == 'Fecha de la actividad') {
-                        let activity_date = order.line_items[index].meta_data[index2].value;
-                        let result_date = new Date(Date.parse(activity_date.split("/").reverse().join("-").toString())).toISOString().split('T')[0];
+                    if (meta.display_key == 'Fecha de la actividad' || meta.display_key == 'Activity Date') {
+                        try {
+                            let activity_date = order.line_items[index].meta_data[index2].value;
+                            let result_date = result_date = new Date(Date.parse(activity_date.split("/").reverse().join("-").toString())).toISOString().split('T')[0];
 
-                        order.line_items[index].meta_data.push({
-                            "key": "_tour_date",
-                            "value": result_date,
-                            "display_key": "_tour_date",
-                            "display_value": result_date
-                        });
+                            order.line_items[index].meta_data.push({
+                                "key": "_tour_date",
+                                "value": result_date,
+                                "display_key": "_tour_date",
+                                "display_value": result_date
+                            });
+                        } catch (error is instanceof RangeError) {
+                            console.error(`Invalid date for activity_date <${activity_date}>.`);
+                        } catch (error) {
+                            console.error(`An error ocurred: `, error);
+                        }
                     }
 
-                    if (meta.display_key == 'Horario de la actividad') {
-                        let activity_time = '1999-01-01 ' + order.line_items[index].meta_data[index2].value + ' UTC';
-                        let result_time = new Date(Date.parse(activity_time.split("/").reverse().join("-").toString())).toISOString().split('T')[1].split(':');
+                    if (meta.display_key == 'Horario de la actividad' || meta.display_key == 'Pick Up Schedule') {
+                        try {
+                            let activity_time = '1999-01-01 ' + order.line_items[index].meta_data[index2].value + ' UTC';
+                            let result_time = new Date(Date.parse(activity_time.split("/").reverse().join("-").toString())).toISOString().split('T')[1].split(':');
 
-                        order.line_items[index].meta_data.push({
-                            "key": "_tour_schedule",
-                            "value": result_time[0] + ':' + result_time[1],
-                            "display_key": "_tour_schedule",
-                            "display_value": result_time[0] + ':' + result_time[1]
-                        });
+                            order.line_items[index].meta_data.push({
+                                "key": "_tour_schedule",
+                                "value": result_time[0] + ':' + result_time[1],
+                                "display_key": "_tour_schedule",
+                                "display_value": result_time[0] + ':' + result_time[1]
+                            });
+                        } catch (error is instanceof RangeError) {
+                            console.error(`Invalid date for activity_date <${activity_date}>.`);
+                        } catch (error) {
+                            console.error(`An error ocurred: `, error);
+                        }
                     }
                 });
             }
