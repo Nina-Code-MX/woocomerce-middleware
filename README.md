@@ -22,7 +22,6 @@ Copy the `.env.example` to `.env` and change the necessary values
 Run the node dev script:
 
 ```bash
-npx tsc
 npm run dev
 ```
 

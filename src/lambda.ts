@@ -1,5 +1,39 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from 'aws-lambda';
 
+/**
+ * Get the product details from the WooCommerce API
+ * @param id 
+ * @returns 
+ */
+const getProductDetails = async (id: string) => {
+    const response = await fetch(process.env.WOOCOMMERCE_ENDPOINT + '/products/' + id, {
+        method: 'GET',
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': 'Basic ' + btoa(process.env.WOOCOMMERCE_API_KEY + ':' + process.env.WOOCOMMERCE_API_SECRET)
+        }
+    });
+    return await response.json();
+};
+
+/**
+ * Get the product details from the WooCommerce API
+ * @param id 
+ * @returns 
+ */
+const getProductVariationDetails = async (product_id: string, id: string) => {
+    const response = await fetch(process.env.WOOCOMMERCE_ENDPOINT + '/products/' + product_id + '/variations/' + id, {
+        method: 'GET',
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': 'Basic ' + btoa(process.env.WOOCOMMERCE_API_KEY + ':' + process.env.WOOCOMMERCE_API_SECRET)
+        }
+    });
+    return await response.json();
+};
+
 exports.handler = async (event: APIGatewayProxyEvent, context: Context): Promise<APIGatewayProxyResult> => {
     const req = {
         body: event.body || '{}',
@@ -29,13 +63,31 @@ exports.handler = async (event: APIGatewayProxyEvent, context: Context): Promise
         body: JSON.stringify({ message: 'Skipped.' })
     };
 
-    console.log('Data received: ', JSON.stringify(order));
+    console.info('Data received: ', JSON.stringify(order));
 
     if (
         (order.hasOwnProperty("status") && order.status == 'cancelled') ||
         (order.hasOwnProperty("date_paid") && order.date_paid)
     ) {
-        order.line_items.forEach((line_item: any, index: number) => {
+        const items = order.line_items;
+
+        await Promise.all(items.map(async (line_item: any, index: number) => {
+            if (line_item.hasOwnProperty("product_id") && line_item.hasOwnProperty("sku") && line_item.sku == '') {
+                const product_details = await getProductDetails(line_item.product_id);
+
+                if (product_details.hasOwnProperty("variations") && product_details.variations.length > 0) {
+                    let variation_id = product_details.variations[0];
+
+                    order.line_items[index].variation_id = variation_id;
+
+                    const variation_details = await getProductVariationDetails(line_item.product_id, variation_id);
+
+                    if (variation_details.hasOwnProperty("sku")) {
+                        order.line_items[index].sku = variation_details.sku;
+                    }
+                }
+            }
+
             if (line_item.hasOwnProperty("meta_data")) {
                 line_item.meta_data.forEach((meta: any, index2: number) => {
                     if (meta.display_key == 'Fecha de la actividad' || meta.display_key == 'Activity Date') {
@@ -73,7 +125,7 @@ exports.handler = async (event: APIGatewayProxyEvent, context: Context): Promise
                             });
                         } catch (error) {
                             if (error instanceof RangeError) {
-                                console.error(`Invalid time for activity_time <${activity_time}>.`);
+                                console.error(`Invalid date for activity_date <${activity_time}>.`);
                             } else {
                                 console.error(`An error ocurred: `, error);
                             }
@@ -81,9 +133,11 @@ exports.handler = async (event: APIGatewayProxyEvent, context: Context): Promise
                     }
                 });
             }
-        });
 
-        console.log('Data to sent: ', JSON.stringify(order));
+            Promise.resolve();
+        }));
+
+        console.info('Data to sent: ', JSON.stringify(order));
 
         try {
             const response = await fetch("https://apps.canopyriver.com/api/ReservasWEB", {
@@ -95,9 +149,8 @@ exports.handler = async (event: APIGatewayProxyEvent, context: Context): Promise
                 }
             });
             const data: any = await response.json();
-            console.log(`Scheduled`, data);
 
-            if (!data.exitoso) {
+            if (!data.hasOwnProperty('exitoso') || !data.exitoso) {
                 throw new Error(`La peticion a la reservacion no fue exitosa ${JSON.stringify(data)}`);
             }
 
