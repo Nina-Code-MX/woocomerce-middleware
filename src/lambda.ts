@@ -1,6 +1,26 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from 'aws-lambda';
 
 /**
+ * Get the authentication token
+ * @returns {Promise<any>}
+ */
+const getAuthToken = async () => {
+    const response = await fetch(`${process.env.RESV_API_AUTH}`, {
+        method: 'POST',
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            "username": process.env.RESV_API_USERNAME,
+            "password": process.env.RESV_API_PASSWORD,
+            "sucursal": process.env.RESV_API_STORE
+        })
+    });
+    return await response.json();
+};
+
+/**
  * Get the product details from the WooCommerce API
  * @param {string} id 
  * @param {any} credentials
@@ -284,12 +304,19 @@ exports.handler = async (event: APIGatewayProxyEvent, context: Context): Promise
     console.info('Data to sent: ', JSON.stringify(order));
 
     try {
-        const response = await fetch("https://apps.canopyriver.com/api/ReservasWEB", {
+        const auth = await getAuthToken();
+
+        if (!auth || !auth.hasOwnProperty('token')) {
+            throw new Error(`No fue posible obtener el token de autenticacion ${JSON.stringify(auth)}`);
+        }
+
+        const response = await fetch(`${process.env.RESV_API_ENDPOINT}`, {
             method: 'POST',
             body: JSON.stringify(order),
             headers: {
                 'Accept': 'application/json',
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + auth.token
             }
         });
         const data: any = await response.json();
@@ -308,10 +335,16 @@ exports.handler = async (event: APIGatewayProxyEvent, context: Context): Promise
             await setReservationId(order.id, data.confirmacion, site_credentials);
         }
     } catch (error) {
+        let error_message = '';
+
+        if (error instanceof Error) {
+            error_message = error.message || '';
+        }
+
         console.error(`Unable to schedule: `, error);
 
         resp.statusCode = 200;
-        resp.body = JSON.stringify({ message: 'Unable to schedule.', status: 422, data: {} });
+        resp.body = JSON.stringify({ message: `Unable to schedule. ${error_message}`, status: 422, data: {} });
     }
 
     console.log('Response: ', JSON.stringify(resp));

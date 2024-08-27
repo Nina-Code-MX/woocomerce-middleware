@@ -1,6 +1,26 @@
 import { Request, Response } from 'express';
 
 /**
+ * Get the authentication token
+ * @returns {Promise<any>}
+ */
+const getAuthToken = async () => {
+    const response = await fetch(`${process.env.RESV_API_AUTH}`, {
+        method: 'POST',
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            "username": process.env.RESV_API_USERNAME,
+            "password": process.env.RESV_API_PASSWORD,
+            "sucursal": process.env.RESV_API_STORE
+        })
+    });
+    return await response.json();
+};
+
+/**
  * Get the product details from the WooCommerce API
  * @param {string} id 
  * @param {any} credentials
@@ -276,12 +296,19 @@ export const webhook = async (req: Request, res: Response) => {
     console.info('Data to sent: ', JSON.stringify(order));
 
     try {
-        const response = await fetch("https://apps.canopyriver.com/api/ReservasWEB", {
+        const auth = await getAuthToken();
+
+        if (!auth || !auth.hasOwnProperty('token')) {
+            throw new Error(`No fue posible obtener el token de autenticacion ${JSON.stringify(auth)}`);
+        }
+
+        const response = await fetch(`${process.env.RESV_API_ENDPOINT}`, {
             method: 'POST',
             body: JSON.stringify(order),
             headers: {
                 'Accept': 'application/json',
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + auth.token
             }
         });
         const data: any = await response.json();
@@ -302,9 +329,15 @@ export const webhook = async (req: Request, res: Response) => {
             await setReservationId(order.id, data.confirmacion, site_credentials);
         }
     } catch (error) {
+        let error_message = '';
+
+        if (error instanceof Error) {
+            error_message = error.message || '';
+        }
+
         console.error(error);
         status = 400;
-        messages = "La peticion a la reservacion no fue exitosa";
+        messages = `La peticion a la reservacion no fue exitosa: ${error_message}`;
     }
 
     console.info('Response: ', JSON.stringify({ messages: messages, status: status, data: resp_data }));
